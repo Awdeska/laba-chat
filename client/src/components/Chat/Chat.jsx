@@ -1,17 +1,18 @@
-import React, {useState, useEffect, useRef, useContext} from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import moment from 'moment';
 import Linkify from 'react-linkify';
-import './Chat.css'
-import {Context} from "../../index";
-import Loader from "../Loader/Loader";
-import {useCollectionData} from "react-firebase-hooks/firestore";
+import './Chat.css';
+import { Context } from '../../index';
+import Loader from '../Loader/Loader';
+import { useCollection } from 'react-firebase-hooks/firestore';
 
-const Chat = ({ username }) => {
+const Chat = ({ user }) => {
     const { firestore } = useContext(Context);
     const [currentMessage, setCurrentMessage] = useState('');
-    const [collectionData, loading] = useCollectionData(
+    const [editMessageId, setEditMessageId] = useState(null);
+    const [collectionData, loading] = useCollection(
         firestore.collection('messages').orderBy('createdAt')
-    )
+    );
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
@@ -20,16 +21,34 @@ const Chat = ({ username }) => {
         }
     }, [collectionData || []]);
 
+    const deleteMessage = (id) => {
+        firestore.collection('messages').doc(id).delete();
+    };
+
+    const editOnClickHandler = (id, message) => {
+        setEditMessageId(id);
+        setCurrentMessage(message.trim());
+    }
+
+    const updateMessage = (id, updatedMessage) => {
+        firestore.collection('messages').doc(id).update({ text: updatedMessage });
+        setEditMessageId(null);
+        setCurrentMessage('');
+    };
+
     const sendMessage = (event) => {
         event.preventDefault();
+        if (currentMessage.trim() === '') {
+            return;
+        }
         const doc = {
-            uid: username.username.id,
-            username: username.username.nickname,
+            uid: user.user.id,
+            username: user.user.nickname,
             text: currentMessage,
             createdAt: Date.now(),
         };
         firestore.collection('messages').add(doc);
-        setCurrentMessage('')
+        setCurrentMessage('');
     };
 
     const formatDate = (date) => {
@@ -37,24 +56,42 @@ const Chat = ({ username }) => {
     };
 
     if (loading) {
-        return (
-            <Loader/>
-        )
+        return <Loader />;
     }
+
     return (
         <div className="chat">
             <div className="chat-messages">
-                {collectionData.map((message, index) => {
-                    const isCurrentUser = message.username === username.username.nickname;
-                    const messageClass = isCurrentUser
-                        ? 'chat-message chat-message-current-user'
-                        : 'chat-message';
-                    const messageStyle = isCurrentUser ? { textAlign: 'right', background: '#272A35' } : {background: '#373E4E'};
+                {collectionData.docs.map((doc, index) => {
+                    const message = doc.data();
+                    const isCurrentUser = message.username === user.user.nickname;
+                    const messageClass = isCurrentUser ? 'chat-message chat-message-current-user' : 'chat-message';
+                    const messageStyle = isCurrentUser ? { textAlign: 'right', background: '#272A35' } : { background: '#373E4E' };
                     return (
                         <div className={messageClass} key={index}>
                             <p className="chat-message-timestamp">{formatDate(message.createdAt)}</p>
                             <div className="chat-message-content" style={messageStyle}>
-                                <Linkify>{message.text}</Linkify>
+                                {editMessageId === doc.id ? (
+                                    <form onSubmit={(event) => updateMessage(doc.id, currentMessage)}>
+                                        <input
+                                            className="chat-input edit"
+                                            type="text"
+                                            value={currentMessage}
+                                            onChange={(event) => setCurrentMessage(event.target.value.trim())}
+                                        />
+                                        <button type="submit">Save</button>
+                                    </form>
+                                ) : (
+                                    <>
+                                        <Linkify>{message.text}</Linkify>
+                                        {isCurrentUser && (
+                                            <div>
+                                                <button onClick={() => editOnClickHandler(doc.id, message.text)}>Edit</button>
+                                                <button onClick={() => deleteMessage(doc.id)}>Delete</button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     );
@@ -66,10 +103,9 @@ const Chat = ({ username }) => {
                     className="chat-input"
                     type="text"
                     value={currentMessage}
-                    onChange={(event) => setCurrentMessage(event.target.value)}
+                    onChange={(event) => setCurrentMessage(event.target.value.trim())}
                 />
-                <button className="chat-send-button left" type="submit">
-                </button>
+                <button className="chat-send-button" type="submit"></button>
             </form>
         </div>
     );

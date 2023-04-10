@@ -59,6 +59,10 @@ body {
     color: white;
 }
 
+.edit {
+    width: 30rem;
+}
+
 .chat-send-button {
     background-color: #F4F4F4;
     border-radius: 15px;
