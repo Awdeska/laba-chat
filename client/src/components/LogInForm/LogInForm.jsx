@@ -1,26 +1,20 @@
 import React, {useContext, useState} from "react";
 import InputField from "../Items/InputField";
-import s from "./LoginForm.module.css"
+import s from "./LoginForm.module.css";
 import {Context} from "../../index";
 import Button from "../Items/Button";
-import {useNavigate} from "react-router-dom";
 
-
-const LogInForm = () => {
+const LogInForm = ({ setAuth }) => {
     const [nickname, setNickname] = useState('');
     const [password, setPassword] = useState('');
-    const [isUserRegistered, setIsUserRegistered] = useState(false);
     const {store} = useContext(Context);
-    const navigate = useNavigate();
 
-    const handleCheckUser = async () => {
-        if (await store.login(nickname, password)) {
-            setIsUserRegistered(true);
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        await store.login(nickname, password);
+        if (store.isAuthorized) {
+            setAuth(true);
         }
-    };
-
-    if (isUserRegistered) {
-        navigate('/chat');
     }
 
     return (
@@ -37,7 +31,7 @@ const LogInForm = () => {
                 onChange={e => setPassword(e.target.value)}
             />
             <Button label={'Registration'} onClick={() => store.registration(nickname, password)}/>
-            <Button label={'Login'} onClick={() => handleCheckUser()}/>
+            <Button label={'Login'} onClick={handleLogin}/>
         </form>
     );
 };
