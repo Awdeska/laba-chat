@@ -6,6 +6,11 @@ import {store} from "./index";
 
 const App = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    const setAuth = (value) => {
+        setIsAuthenticated(value);
+    };
+
     async function handleCheckAuth() {
         if (localStorage.getItem('token')) {
             await store.checkAuth();
@@ -14,9 +19,10 @@ const App = () => {
             }
         }
     }
+
     useEffect(() => {
         handleCheckAuth();
-    }, []);
+    }, [isAuthenticated]);
 
     return (
         <BrowserRouter>
@@ -26,10 +32,10 @@ const App = () => {
                         {isAuthenticated ? (
                             <Navigate to="/chat" />
                         ) : (
-                            <RegistrationPage/>
+                            <RegistrationPage setAuth={setAuth}/>
                         )}>
                     </Route>
-                    <Route exact path="/chat" element={<ChatPage username={store.user}/>}>
+                    <Route exact path="/chat" element={isAuthenticated ? (<ChatPage user={store.user}/>) : (<Navigate to="/"/>)}>
                     </Route>
                 </Routes>
             </div>
